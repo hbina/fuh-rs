@@ -1,0 +1,11 @@
+[package]
+name = "fuh-rs"
+version = "0.1.0"
+authors = ["Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>"]
+edition = "2018"
+description = "Implementation of Graham Hutton's A Tutorial on the Universality and Expressiveness of Fold in Rust."
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
