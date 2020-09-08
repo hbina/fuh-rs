@@ -1,4 +1,5 @@
 use crate::paper::fold;
+use std::ops::Add;
 
 pub fn execute<I, C, L>(cpu: C, list: L) -> C
 where
@@ -8,9 +9,17 @@ where
     fold(|instruction, cpu| cpu.execute(instruction), cpu, list)
 }
 
+// TODO :: Why does execute needs to be sized?
 pub trait CPU {
     type ISA;
-    fn execute(self, isa: Self::ISA) -> Self;
+    fn execute(self, instruction: Self::ISA) -> Self;
+    fn executes<L>(self, instructions: L) -> Self
+    where
+        L: Iterator<Item = Self::ISA>,
+        Self: Sized,
+    {
+        instructions.fold(self, |cpu, instruction| cpu.execute(instruction))
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -19,6 +28,8 @@ pub enum BasicRegister {
     B,
     C,
 }
+
+impl Register for BasicRegister {}
 
 impl From<BasicRegister> for usize {
     fn from(from: BasicRegister) -> Self {
@@ -30,32 +41,57 @@ impl From<BasicRegister> for usize {
     }
 }
 
-pub enum BasicIsa<Register> {
-    // (InputA, InputB, Output)
-    ADD(Register, Register, Register),
+pub trait Register {}
+
+pub enum BasicIsa<T, R>
+where
+    R: Register,
+{
+    /// Adds A and B placing it in C.
+    ADD(R, R, R),
+    /// Copies A into B.
+    COPY(R, R),
+    /// Sets A to B.
+    SET(T, R),
 }
 
 #[derive(Eq, PartialEq, Debug)]
-pub struct BasicCPU {
-    registers: [i32; 3],
+pub struct BasicCPU<T> {
+    registers: [T; 3],
 }
 
-impl Default for BasicCPU {
+impl<T> Default for BasicCPU<T>
+where
+    T: Default,
+{
     fn default() -> Self {
         BasicCPU {
-            registers: [0, 0, 0],
+            registers: [T::default(), T::default(), T::default()],
         }
     }
 }
 
-impl CPU for BasicCPU {
-    type ISA = BasicIsa<BasicRegister>;
+impl<T> CPU for BasicCPU<T>
+where
+    T: Add<Output = T> + Copy,
+{
+    type ISA = BasicIsa<T, BasicRegister>;
 
     fn execute(self, isa: Self::ISA) -> Self {
         match isa {
             BasicIsa::ADD(a, b, c) => {
                 let mut registers = self.registers;
                 registers[usize::from(c)] = registers[usize::from(a)] + registers[usize::from(b)];
+                Self { registers }
+            }
+            BasicIsa::COPY(a, b) => {
+                let mut registers = self.registers;
+                registers[usize::from(b)] = self.registers[usize::from(a)];
+                Self { registers }
+            }
+            BasicIsa::SET(a, b) => {
+                let mut registers = self.registers;
+                registers[usize::from(b)] = a;
                 Self { registers }
             }
         }
@@ -76,5 +112,39 @@ pub fn basic_virtual_machine_test() -> Result<(), Box<dyn std::error::Error>> {
             cpu.execute(instruction)
         );
     }
+    {
+        let cpu = BasicCPU {
+            registers: [1, 2, 0],
+        };
+        let instruction = BasicIsa::ADD(BasicRegister::A, BasicRegister::B, BasicRegister::C);
+        assert_eq!(
+            BasicCPU {
+                registers: [1, 2, 3]
+            },
+            cpu.execute(instruction)
+        );
+    }
+    Ok(())
+}
+
+#[test]
+pub fn basic_virtual_machine_consuming_instructions() -> Result<(), Box<dyn std::error::Error>> {
+    let instructions = vec![
+        BasicIsa::ADD(BasicRegister::A, BasicRegister::C, BasicRegister::C),
+        BasicIsa::ADD(BasicRegister::A, BasicRegister::C, BasicRegister::C),
+        BasicIsa::ADD(BasicRegister::A, BasicRegister::C, BasicRegister::C),
+        BasicIsa::ADD(BasicRegister::A, BasicRegister::C, BasicRegister::C),
+        BasicIsa::ADD(BasicRegister::A, BasicRegister::C, BasicRegister::C),
+        BasicIsa::COPY(BasicRegister::C, BasicRegister::B),
+    ];
+    let cpu = BasicCPU {
+        registers: [1, 0, 0],
+    };
+    assert_eq!(
+        BasicCPU {
+            registers: [1, 5, 5]
+        },
+        cpu.executes(instructions.into_iter())
+    );
     Ok(())
 }
