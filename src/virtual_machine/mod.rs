@@ -1,4 +1,3 @@
-use crate::paper::fold;
 use std::ops::Add;
 
 pub fn execute<I, C, L>(cpu: C, list: L) -> C
@@ -6,7 +5,7 @@ where
     L: Iterator<Item = I>,
     C: CPU<ISA = I>,
 {
-    fold(|instruction, cpu| cpu.execute(instruction), cpu, list)
+    list.fold(cpu, |cpu, instruction| cpu.execute(instruction))
 }
 
 // TODO :: Why does execute needs to be sized?
