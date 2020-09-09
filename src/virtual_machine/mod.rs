@@ -1,26 +1,27 @@
 use std::ops::Add;
 
-pub fn execute<I, C, L>(cpu: C, list: L) -> C
-where
-    L: Iterator<Item = I>,
-    C: CPU<ISA = I>,
-{
-    list.fold(cpu, |cpu, instruction| cpu.execute(instruction))
-}
+/// A trait to annotate a type being a register.
+pub trait Register {}
 
-// TODO :: Why does execute needs to be sized?
+/// Trait describing the required functions of a CPU.
 pub trait CPU {
     type ISA;
+
+    /// Execute a single instruction.
     fn execute(self, instruction: Self::ISA) -> Self;
+
+    /// Execute a list of instructions.
     fn executes<L>(self, instructions: L) -> Self
     where
         L: Iterator<Item = Self::ISA>,
+        // TODO :: Why does execute needs to be sized?
         Self: Sized,
     {
         instructions.fold(self, |cpu, instruction| cpu.execute(instruction))
     }
 }
 
+/// Basic registers.
 #[derive(Copy, Clone)]
 pub enum BasicRegister {
     A,
@@ -30,6 +31,7 @@ pub enum BasicRegister {
 
 impl Register for BasicRegister {}
 
+/// Converts a registers into an index for the purposes of accessing memory.
 impl From<BasicRegister> for usize {
     fn from(from: BasicRegister) -> Self {
         match from {
@@ -40,8 +42,7 @@ impl From<BasicRegister> for usize {
     }
 }
 
-pub trait Register {}
-
+/// This basic virtual machine ISA is only capable of performing these 3 instructions.
 pub enum BasicIsa<T, R>
 where
     R: Register,
@@ -54,11 +55,13 @@ where
     SET(T, R),
 }
 
+/// This basic CPU only consists of 3 registers.
 #[derive(Eq, PartialEq, Debug)]
 pub struct BasicCPU<T> {
     registers: [T; 3],
 }
 
+/// This basic CPU defaults its registers to 0.
 impl<T> Default for BasicCPU<T>
 where
     T: Default,

@@ -5,6 +5,8 @@ authors = ["Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>"]
 edition = "2018"
 description = "Implementation of Graham Hutton's A Tutorial on the Universality and Expressiveness of Fold in Rust."
 license = "MIT"
+repository = "https://github.com/hbina/fuh-rs"
+homepage = "https://github.com/hbina/fuh-rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
